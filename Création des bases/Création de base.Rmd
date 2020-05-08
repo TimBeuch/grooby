@@ -1,27 +1,3 @@
----
-title: "Web Scraping du site iafd.com"
-subtitle: 'Tentative pour Sakura'
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-organisation: "EHESS - ENS - PSL"
-author: 'Beuchon Timothé'
-abstract: Ce document reprend la tentative de web scrapping pour Sakura. Je recommande d'ouvrir ce document dans une version récente du navigateur Google Chrome ou Mozilla Firefox (ou au moins IE > v.10). Vous trouverez en haut à droite le bouton "options" qui permet de montrer ou cacher les sections de code du document (vous pouvez toujours le faire manuellement au cours de votre lecture en cliquant sur les boutons de codes présent à droite dans le texte). De plus c'est à partir de ce bouton "options" que vous pourrez télécharger le fichier .Rmd qui est l'équivalent du script R. Si ce document s'ouvre avec un mauvais encoding, vous pouvez le changer en allant dans "File" puis "Reopen with Encoding..." sur RStudio. Veuillez ouvrir ce document sur un écran d'ordinateur, ce html n'est pas adapté pour les téléphones ou tablettes.
-logo1: C:/Users/bleac/OneDrive/Bureau/Template_R-master/Ressources/logo1.svg.png
-logo2: C:/Users/bleac/OneDrive/Bureau/Template_R-master/Ressources/logo2.svg.png
-output: templateR::templateR_html
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,
-                      include=TRUE ,
-                      warning = FALSE,
-                      error = FALSE,
-                      message = FALSE,
-                      results = 'hide',
-                      strip.white=TRUE,
-                      eval = TRUE,
-                      fig.align = 'center')
-```
-
 # Introduction
 
 On essaye de constituer une base de donnée sur des films pornographiques.
@@ -43,7 +19,7 @@ site = "http://www.iafd.com/"
 url = "http://www.iafd.com/distrib.rme/distrib=9788/grooby.com.htm"
 ```
 
-# Partie 1 : le début des emmerdes
+# Partie 1 : le début des ennuis
 
 Dans un premier temps on récupère tout les films produits par ce studio.
 
@@ -539,12 +515,3 @@ On export le rendu.
 data5 %>%
   export("C:/Users/bleac/OneDrive/Bureau/Sakura/Porn_Acteurs.rds")
 ```
-
-# Référence 
-
-https://thinkr.fr/rvest/
-https://github.com/tidyverse/rvest
-http://edutechwiki.unige.ch/fr/Web_scraping_avec_R
-https://cran.r-project.org/web/packages/rvest/rvest.pdf
-https://stanford.edu/~wpmarble/webscraping_tutorial/webscraping_tutorial.pdf
-https://purrr.tidyverse.org/
