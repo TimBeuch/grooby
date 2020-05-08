@@ -1,23 +1,4 @@
----
-title: "Porn"
-subtitle: 'Sociologie des réseaux'
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-author: 'Beuchon Timothé'
-output:
-  html_document:
-    keep_md: no
-    code_folding: show
-    code_download: TRUE
-    toc: TRUE
-    toc_float: TRUE
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Import
-
 
 Nous importons les bases de données et quelques packages.
 
@@ -443,23 +424,6 @@ for (i in V(graph2)) { # Pour chaque individus de graph
 
 summary(graph2)
 ```
-
-## Distribution des degrées 
-
-Je visualise la distribution des degrées dans mon réseaux.
-
-```{r}
-plot(degree.distribution(graph2,
-                         mode = "all",
-                         cumulative=T), 
-     pch=19, 
-     cex=1, 
-     col="orange",
-     xlab="Degré",
-     ylab="Fréquence cumulative")
-```
-
-On est en présence d'une loi de puissance. Pourquoi ? est-ce parce qu'une minorité d'acteur concentre un grand nombre de connection ou est-ce dû à un problème dans la façon que nous avons constitué la matrice ?
 
 ## Représentation du réseau
 
