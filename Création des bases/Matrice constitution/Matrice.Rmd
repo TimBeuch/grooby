@@ -1,23 +1,4 @@
----
-title: "Porn"
-subtitle: 'Sociologie des réseaux'
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-author: 'Beuchon Timothé'
-output:
-  html_document:
-    keep_md: no
-    code_folding: show
-    code_download: TRUE
-    toc: TRUE
-    toc_float: TRUE
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Import
-
 
 Nous importons les bases de données et quelques packages.
 
@@ -25,10 +6,8 @@ Nous importons les bases de données et quelques packages.
 pacman::p_load(rio,
                igraph,
                tidyverse)
-
 Donnees = "C:/Users/bleac/OneDrive/Bureau/Sakura/Porn_Films.rds" %>% 
   import
-
 Donnees_acteur = "C:/Users/bleac/OneDrive/Bureau/Sakura/Porn_Acteurs3.rds" %>%
   import 
 ```
@@ -44,7 +23,6 @@ Ici on met en forme et on corrige les données issues du web scraping.
 
 ```{r}
 role = "AnalToy|IR|Top(?!az)|Facial|Anal(?!ie)|Bald(?!\\w)|DAP|CumSwap|Fisting|BJOnly|DP|Pee|GS|Creampie|HJOnly|LezOnly|AutoFellatio|NonSex|Swallow(?!s)|A2M"
-
 Donnees1 = Donnees %>% 
   mutate(Name = str_replace_all(string = Name,
                                 pattern = "MastOnly|IR|Top(?!az)|Facial|Bottom",
@@ -110,10 +88,8 @@ Nous vérifions que les noms des acteurs concordent dans les deux bases de donn�
 b = Donnees_acteur %>% 
   select(Name) %>% 
   mutate(Name = str_to_title(str_trim(string = Name)))
-
 test = str_to_title(unique(Donnees1$Name)) %>%
   enframe(value = "Name")
-
 test0 = b %>% 
   anti_join(test,
             by = "Name")
@@ -121,7 +97,6 @@ test00 = test %>%
   anti_join(b,
             by = "Name") %>% 
   select(-name)
-
 Supr = bind_rows(test0,
                  test00)
 rm(test0,
@@ -161,7 +136,6 @@ Nous constituons la base des acteurs. Nous filtrons pour ne garder que les noms 
 level_key <- c(None = 0,
                `No data` = NA_character_,
                .default = 1)
-
 Donnees_acteur1 = Donnees_acteur %>%
   mutate(Name = str_to_title(str_trim(Name))) %>%
   select(Name,
@@ -185,18 +159,14 @@ Donnees_acteur1 = Donnees_acteur %>%
   select(-db) %>%
   anti_join(Supr,
             by = "Name")
-
 a = unique(Donnees_acteur1$Name) %>% 
   enframe()
-
 Donnees_acteur1 = Donnees_acteur1 %>% 
   inner_join(a,
              by = c("Name" = "value"))
-
 filtre = Donnees_acteur1 %>%
   select(Name,
          name)
-
 Donnees1 = Donnees1 %>%
   inner_join(filtre,
              by = "Name")
@@ -236,7 +206,6 @@ test = Donnees1 %>%
                         "E")) %>% 
   filter(!is.na(value) & ! value == "") %>% 
   mutate(value = str_trim(value))
-
 test1 = test %>% 
   select(-Title,
          -name) %>% 
@@ -244,7 +213,6 @@ test1 = test %>%
            value) %>% 
   summarise(n = n()) %>% 
   ungroup
-
 test2 = test1 %>% 
   left_join(a, 
             by = c("Name" = "value")) %>% 
@@ -267,7 +235,6 @@ Nous avons maintenant une matrice carré qui regroupe les interconnections pour 
 ```{r}
 test2 %>% 
   export("C:/Users/bleac/OneDrive/Bureau/Sakura/Matrice_poids.rds")
-
 Donnees_acteur1 %>% 
   export("C:/Users/bleac/OneDrive/Bureau/Sakura/Attributs.rds")
 ```
@@ -280,9 +247,7 @@ Ici est présenté la façon de traiter le graph si l'on considère le "poids".$
 graph = graph.adjacency(as.matrix(test2),
                         weighted = TRUE,
                         mode = "undirected")
-
 t = as.matrix(Donnees_acteur1)
-
 for (i in V(graph)) { # Pour chaque individus de graph
   for (j in colnames(t)) { # Pour chaque colonne de Elattributes
     graph <- set.vertex.attribute(graph = graph, # le graph
@@ -291,7 +256,6 @@ for (i in V(graph)) { # Pour chaque individus de graph
                                   value = t[i, j]) # la valeur à mettre
   }
 }
-
 summary(graph)
 ```
 
@@ -331,17 +295,13 @@ ego = make_ego_graph(graph,
                      nodes = V(graph)[115],#2677 #54 #21
                      mode ="all",
                      mindist = 0)[[1]]
-
 col2 <- rep("grey40",
             vcount(ego))
 neigh.nodes <- neighbors(ego,
                          V(ego)[name==" 115"],
                          mode="all")
-
 col2[neigh.nodes] <- "#ff9d00"
-
 col2[V(ego)$name==" 115"] <- "#ff5100"
-
 plot(ego,
      edge.curved= .4,
      edge.width = E(ego)$weight/2,
@@ -366,18 +326,13 @@ ego = make_ego_graph(graph,
                      nodes = V(graph)[74],#2677 #54 #21
                      mode ="all",
                      mindist = 0)[[1]]
-
 col2 <- rep("grey40",
             vcount(ego))
-
 col2[V(ego)$name=="  74"] <- "#ff5100"
-
 neigh.nodes <- neighbors(ego,
                          V(ego)[name=="  74"],
                          mode="all")
-
 col2[neigh.nodes] <- "#ff9d00"
-
 plot(ego,
      #vertex.label = V(ego)$Name,
      edge.width = E(ego)$weight/2,
@@ -395,18 +350,13 @@ ego = make_ego_graph(graph,
                      nodes = V(graph)[527],
                      mode ="all",
                      mindist = 0)[[1]]
-
 col2 <- rep("grey40",
             vcount(ego))
-
 neigh.nodes <- neighbors(ego,
                          V(ego)[name==" 527"],
                          mode="all")
-
 col2[neigh.nodes] <- "#ff9d00"
-
 col2[V(ego)$name==" 527"] <- "#ff5100"
-
 plot(ego,
      #vertex.label = V(ego)$Name,
      edge.width = E(ego)$weight/2,
@@ -415,7 +365,6 @@ plot(ego,
      main = "Réseau egocentré de l'acteur numéro 527",
      sub = "Avec Ego")
 ```
-
 
 # Analyse sans force des liens
 
@@ -426,12 +375,9 @@ test22 = test2 %>%
   mutate_all(.funs = ~recode(.x = .,
                              `0`= 0,
                              .default = 1))
-
 graph2 = graph.adjacency(as.matrix(test22),
                         mode = "undirected")
-
 #t = as.matrix(Donnees_acteur1)
-
 for (i in V(graph2)) { # Pour chaque individus de graph
   for (j in colnames(t)) { # Pour chaque colonne de Elattributes
     graph2 <- set.vertex.attribute(graph = graph2, # le graph
@@ -440,26 +386,8 @@ for (i in V(graph2)) { # Pour chaque individus de graph
                                    value = t[i, j]) # la valeur à mettre
   }
 }
-
 summary(graph2)
 ```
-
-## Distribution des degrées 
-
-Je visualise la distribution des degrées dans mon réseaux.
-
-```{r}
-plot(degree.distribution(graph2,
-                         mode = "all",
-                         cumulative=T), 
-     pch=19, 
-     cex=1, 
-     col="orange",
-     xlab="Degré",
-     ylab="Fréquence cumulative")
-```
-
-On est en présence d'une loi de puissance. Pourquoi ? est-ce parce qu'une minorité d'acteur concentre un grand nombre de connection ou est-ce dû à un problème dans la façon que nous avons constitué la matrice ?
 
 ## Représentation du réseau
 
