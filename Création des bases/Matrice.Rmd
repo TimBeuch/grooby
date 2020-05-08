@@ -397,7 +397,6 @@ plot(ego,
      sub = "Avec Ego")
 ```
 
-
 # Analyse sans force des liens
 
 Ici est présenté la façon de traiter le graph si l'on considère le "poids" n'existe pas. $$n_{IJ}=1$$ 
