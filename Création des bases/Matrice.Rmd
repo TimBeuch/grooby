@@ -1,0 +1,472 @@
+---
+title: "Porn"
+subtitle: 'Sociologie des réseaux'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: 'Beuchon Timothé'
+output:
+  html_document:
+    keep_md: no
+    code_folding: show
+    code_download: TRUE
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import
+
+
+Nous importons les bases de données et quelques packages.
+
+```{r}
+pacman::p_load(rio,
+               igraph,
+               tidyverse)
+
+Donnees = "C:/Users/bleac/OneDrive/Bureau/Sakura/Porn_Films.rds" %>% 
+  import
+
+Donnees_acteur = "C:/Users/bleac/OneDrive/Bureau/Sakura/Porn_Acteurs3.rds" %>%
+  import 
+```
+
+Nous avons deux bases :
+
+* La première base de données est composée de `r nrow(Donnees)` occurences et de `r ncol(Donnees)`. Les occurences représentent chaque acteurs unique pour chacun des films du studio grooby.
+* La seconde base de données est composée `r nrow(Donnees_acteur)` occurences et de `r ncol(Donnees_acteur)`. Les occurences représentent les acteurs unique du studio grooby.
+
+## Mise en forme
+
+Ici on met en forme et on corrige les données issues du web scraping.
+
+```{r}
+role = "AnalToy|IR|Top(?!az)|Facial|Anal(?!ie)|Bald(?!\\w)|DAP|CumSwap|Fisting|BJOnly|DP|Pee|GS|Creampie|HJOnly|LezOnly|AutoFellatio|NonSex|Swallow(?!s)|A2M"
+
+Donnees1 = Donnees %>% 
+  mutate(Name = str_replace_all(string = Name,
+                                pattern = "MastOnly|IR|Top(?!az)|Facial|Bottom",
+                                replacement = ""),
+         Name = str_replace(string = Name,
+                             pattern = "DPP",
+                             replacement = "DP"),
+         Role1 = if_else(str_detect(string = Name,
+                                    pattern = role) == TRUE,
+                         str_extract_all(string = Name,
+                                         pattern = role),
+                         list("")),
+         Role1 = str_replace_all(string = paste0(Role1),
+                                 pattern = '(^c\\(|\\"\\)|"|\\s)',
+                                 replacement = ""),
+         Role = paste(Role, 
+                      Role1,
+                      sep = ", "),
+         Role = str_trim(str_replace(string = Role,
+                                     pattern = "^,",
+                                     replacement = "")),
+         Name = str_trim(str_replace_all(string = Name,
+                                         pattern = role,
+                                         replacement = "")),
+         Role = str_replace(string = Role,
+                            pattern = "^,|,$",
+                            replacement = ""),
+         Name = if_else(Name == "Karlessa",
+                        "Karlessa Top",
+                        Name),
+         Name = if_else(Name == "Apple",
+                        "Apple Bottom",
+                        Name),
+         Name = if_else(Name == "Tony",
+                        "Tony Top",
+                        Name),
+         Name = if_else(Name == "Tony Top" &
+                          Title == "Bree Bella and Tony Fuck Each Other",
+                        "Tony",
+                        Name),
+         Name = if_else(Name == "Rodrigo" &
+                          Title == "Kasey Kei Gets a Creampie",
+                        "Rodrigo Amor",
+                        Name),
+         Name = if_else(Name == "$cam Likely",
+                        "Cam Likely",
+                        Name),
+         Name = str_to_title(Name),
+         Title = if_else(Link == "http://www.iafd.com//title.rme/title=leticia/year=2003/leticia.htm",
+                         "Leticia (2003)",
+                         Title),
+         Title = if_else(Link == "http://www.iafd.com//title.rme/title=leticia/year=2004/leticia.htm",
+                         "Leticia (2004)",
+                         Title)) %>% 
+  select(-Role1)
+```
+
+## Vérification
+
+Nous vérifions que les noms des acteurs concordent dans les deux bases de données.
+
+```{r}
+b = Donnees_acteur %>% 
+  select(Name) %>% 
+  mutate(Name = str_to_title(str_trim(string = Name)))
+
+test = str_to_title(unique(Donnees1$Name)) %>%
+  enframe(value = "Name")
+
+test0 = b %>% 
+  anti_join(test,
+            by = "Name")
+test00 = test %>% 
+  anti_join(b,
+            by = "Name") %>% 
+  select(-name)
+
+Supr = bind_rows(test0,
+                 test00)
+rm(test0,
+   test00,
+   test,
+   b)
+```
+
+On enlève deux acteurs pour les raison suivante : 
+
+* rajouté au site après le premier web scraping qui consitue la base Film mais avant le second qui consititue la base Acteur
+* acteur qui pose soucis dans la façon dont il est enregistré dans le site (caractère non escapé dans son titre)
+
+# Base film
+
+On constitue une liste qui nous sert de référence pour connaître les différents acteurs dans chaque films.
+
+```{r}
+Liste_film = Donnees1 %>% 
+  select(Title,
+         Name) %>% 
+  group_by(Title) %>% 
+  mutate(n = 1,
+         n = cumsum(n)) %>% 
+  pivot_wider(names_from = n,
+              values_from = Name) %>% 
+  ungroup()
+```
+
+Nous avons donc une base de référence qui contient `r nrow(Liste_film)` film différents avec au maximum `r ncol(Liste_film)` acteurs différents.
+
+# Liste acteurs
+
+Nous constituons la base des acteurs. Nous filtrons pour ne garder que les noms d'acteurs qui ne sont pas présent en double, on a pas moyen de contrôler cela, il faudrait (re)faire du web scraping pour récupérer la liste de film présent sur les pages personnels des acteurs.
+
+```{r}
+level_key <- c(None = 0,
+               `No data` = NA_character_,
+               .default = 1)
+
+Donnees_acteur1 = Donnees_acteur %>%
+  mutate(Name = str_to_title(str_trim(Name))) %>%
+  select(Name,
+         Taille_cm,
+         Poids_kg,
+         Tattoos,
+         Piercings,
+         Gender) %>%
+  mutate(Gender = recode(.x = Gender,
+                         "f" = "2",
+                         "m" = "1",
+                         .default = NA_character_),
+         Tattoos = recode(.x = Tattoos,
+                          !!!level_key),
+         Piercings = recode(.x = Piercings,
+                            !!!level_key)) %>% 
+  mutate(db = duplicated(Name)|
+           duplicated(Name,
+                      fromLast = TRUE)) %>% 
+  filter(!db == "TRUE") %>%
+  select(-db) %>%
+  anti_join(Supr,
+            by = "Name")
+
+a = unique(Donnees_acteur1$Name) %>% 
+  enframe()
+
+Donnees_acteur1 = Donnees_acteur1 %>% 
+  inner_join(a,
+             by = c("Name" = "value"))
+
+filtre = Donnees_acteur1 %>%
+  select(Name,
+         name)
+
+Donnees1 = Donnees1 %>%
+  inner_join(filtre,
+             by = "Name")
+```
+
+# Matrice
+
+On constitue notre matrice carré avec l'idée qu'elle puisse indiquer les connections entre acteurs. Si un acteur $I$ à joué dans le même film que l'acteur $J$ alors il y a aura la valeur $1$ placé à l'intersection. Si un acteur $I$ à joué $n$ fois dans le même film que l'acteur $J$ alors il y a aura la valeur $n$ placé à l'intersection.
+
+```{r}
+test = Donnees1 %>% 
+  anti_join(Supr,
+            by = "Name")  %>% 
+  select(Title,
+         Name) %>%
+  group_by(Title) %>% 
+  mutate(test1 = paste(Name,
+                       collapse = ", "),
+         test0 = if_else(str_detect(string = test1,
+                                    pattern = ", ") == TRUE,
+                         str_trim(str_replace(string = test1,
+                                              pattern = Name,
+                                              replacement = "")),
+                         test1),
+         test0 = str_trim(str_replace(string = test0,
+                                      pattern = "^,\\s|\\s,|,\\s$",
+                                      replacement = ""))) %>% 
+  separate(test0,
+           c("A", "B", "C", "D", "E"),
+           sep = ",") %>%
+  ungroup %>% 
+  select(-test1) %>% 
+  pivot_longer(cols = c("A", 
+                        "B",
+                        "C",
+                        "D",
+                        "E")) %>% 
+  filter(!is.na(value) & ! value == "") %>% 
+  mutate(value = str_trim(value))
+
+test1 = test %>% 
+  select(-Title,
+         -name) %>% 
+  group_by(Name,
+           value) %>% 
+  summarise(n = n()) %>% 
+  ungroup
+
+test2 = test1 %>% 
+  left_join(a, 
+            by = c("Name" = "value")) %>% 
+  left_join(a,
+            by = "value") %>% 
+  select(-Name,
+         -value,
+         Name = name.x,
+         value = name.y,
+         n) %>%
+  spread(value,
+         n, 
+         fill = 0) %>% 
+  select(-Name)
+```
+
+Nous avons maintenant une matrice carré qui regroupe les interconnections pour `r nrow(test2)` acteurs.
+
+
+```{r}
+test2 %>% 
+  export("C:/Users/bleac/OneDrive/Bureau/Sakura/Matrice_poids.rds")
+
+Donnees_acteur1 %>% 
+  export("C:/Users/bleac/OneDrive/Bureau/Sakura/Attributs.rds")
+```
+
+# Analyse avec force des liens
+
+Ici est présenté la façon de traiter le graph si l'on considère le "poids".$$Weight = n_{IJ}$$
+
+```{r}
+graph = graph.adjacency(as.matrix(test2),
+                        weighted = TRUE,
+                        mode = "undirected")
+
+t = as.matrix(Donnees_acteur1)
+
+for (i in V(graph)) { # Pour chaque individus de graph
+  for (j in colnames(t)) { # Pour chaque colonne de Elattributes
+    graph <- set.vertex.attribute(graph = graph, # le graph
+                                  name = j, # le nom des attribue à faire (acteurs ici)
+                                  index = i, # A quelle colonne
+                                  value = t[i, j]) # la valeur à mettre
+  }
+}
+
+summary(graph)
+```
+
+## Distribution des degrées 
+
+Je visualise la distribution des degrées dans mon réseaux.
+
+```{r}
+plot(degree.distribution(graph,
+                         mode = "all",
+                         cumulative=T), 
+     pch=19, 
+     cex=1, 
+     col="orange",
+     xlab="Degré",
+     ylab="Fréquence cumulative")
+```
+
+On est en présence d'une loi de puissance. Pourquoi ? est-ce parce qu'une minorité d'acteur concentre un grand nombre de connection ou est-ce dû à un problème dans la façon que nous avons constitué la matrice 
+
+## Représentation du réseau
+
+```{r}
+plot(graph, 
+     edge.curved= .4,
+     edge.width = E(graph)$weight/4,
+     vertex.size = 5,
+     vertex.label = NA,
+     edge.arrow = NA)
+```
+
+## Représentation du réseau ego centré
+
+```{r}
+ego = make_ego_graph(graph, 
+                     order = 1,
+                     nodes = V(graph)[115],#2677 #54 #21
+                     mode ="all",
+                     mindist = 0)[[1]]
+
+col2 <- rep("grey40",
+            vcount(ego))
+neigh.nodes <- neighbors(ego,
+                         V(ego)[name==" 115"],
+                         mode="all")
+
+col2[neigh.nodes] <- "#ff9d00"
+
+col2[V(ego)$name==" 115"] <- "#ff5100"
+
+plot(ego,
+     edge.curved= .4,
+     edge.width = E(ego)$weight/2,
+     #V(ego)$Name,
+     vertex.label.dist = 1,
+     vertex.label.cex = .75,
+     vertex.label.degree = 0,#-pi/2
+     vertex.label.color="gray2",
+     vertex.color = col2,
+     vertex.shape =  c("square",
+                       "circle")[as.numeric(V(ego)$Gender)],
+     main = "Réseau egocentré de l'acteur numéro 115",
+     sub = "Avec Ego"
+     )
+```
+
+Comme ego est connecté avec lui même, puisqu'il a joué dans un film en solitaire, on doit le cibler en inversant les lignes de codes par rapport à la méthode vu en cours. 
+
+```{r}
+ego = make_ego_graph(graph, 
+                     order = 1,
+                     nodes = V(graph)[74],#2677 #54 #21
+                     mode ="all",
+                     mindist = 0)[[1]]
+
+col2 <- rep("grey40",
+            vcount(ego))
+
+col2[V(ego)$name=="  74"] <- "#ff5100"
+
+neigh.nodes <- neighbors(ego,
+                         V(ego)[name=="  74"],
+                         mode="all")
+
+col2[neigh.nodes] <- "#ff9d00"
+
+plot(ego,
+     #vertex.label = V(ego)$Name,
+     edge.width = E(ego)$weight/2,
+     vertex.color=col2,
+     vertex.size=9,
+     main = "Réseau egocentré de l'acteur numéro 74",
+     sub = "Avec Ego")
+```
+
+Ego n'a pas joué seul dans un film, il est possible de le cibler avec la méthode vu en cours.
+
+```{r}
+ego = make_ego_graph(graph, 
+                     order = 1,
+                     nodes = V(graph)[527],
+                     mode ="all",
+                     mindist = 0)[[1]]
+
+col2 <- rep("grey40",
+            vcount(ego))
+
+neigh.nodes <- neighbors(ego,
+                         V(ego)[name==" 527"],
+                         mode="all")
+
+col2[neigh.nodes] <- "#ff9d00"
+
+col2[V(ego)$name==" 527"] <- "#ff5100"
+
+plot(ego,
+     #vertex.label = V(ego)$Name,
+     edge.width = E(ego)$weight/2,
+     vertex.color=col2,
+     vertex.size=9,
+     main = "Réseau egocentré de l'acteur numéro 527",
+     sub = "Avec Ego")
+```
+
+
+# Analyse sans force des liens
+
+Ici est présenté la façon de traiter le graph si l'on considère le "poids" n'existe pas. $$n_{IJ}=1$$ 
+
+```{r}
+test22 = test2 %>%
+  mutate_all(.funs = ~recode(.x = .,
+                             `0`= 0,
+                             .default = 1))
+
+graph2 = graph.adjacency(as.matrix(test22),
+                        mode = "undirected")
+
+#t = as.matrix(Donnees_acteur1)
+
+for (i in V(graph2)) { # Pour chaque individus de graph
+  for (j in colnames(t)) { # Pour chaque colonne de Elattributes
+    graph2 <- set.vertex.attribute(graph = graph2, # le graph
+                                   name = j, # le nom des attribue à faire (acteurs ici)
+                                   index = i, # A quelle colonne
+                                   value = t[i, j]) # la valeur à mettre
+  }
+}
+
+summary(graph2)
+```
+
+## Distribution des degrées 
+
+Je visualise la distribution des degrées dans mon réseaux.
+
+```{r}
+plot(degree.distribution(graph2,
+                         mode = "all",
+                         cumulative=T), 
+     pch=19, 
+     cex=1, 
+     col="orange",
+     xlab="Degré",
+     ylab="Fréquence cumulative")
+```
+
+On est en présence d'une loi de puissance. Pourquoi ? est-ce parce qu'une minorité d'acteur concentre un grand nombre de connection ou est-ce dû à un problème dans la façon que nous avons constitué la matrice ?
+
+## Représentation du réseau
+
+```{r}
+plot(graph2, 
+     edge.curved= .4,
+     vertex.size = 5,
+     vertex.label = NA,
+     edge.arrow = NA)
+```
